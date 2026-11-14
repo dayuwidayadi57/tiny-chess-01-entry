@@ -1,6 +1,6 @@
 # tiny-chess-01 — a 4 KB Python chess engine
 
-`main.py` (4,076 of the 4,096 allowed bytes) is the whole engine: an
+`main.py` (4,088 of the 4,096 allowed bytes) is the whole engine: an
 lzma-packed artifact that unpacks and execs a compact Python source
 (the rules explicitly allow a compressed payload plus its unpacker).
 No model calls, no clock reads, no randomness — every move is a pure
@@ -24,6 +24,13 @@ trial replays move for move.
   limit). At 100,000 nodes the same engine (plus principal variation
   search) uses 70.6% of the wall locally, with the slowest move 4.3 s
   and zero time losses.
+- Hardened agent loop (v4e): the env calls retry — `/game` is retried
+  with a 3 s pause until the env answers, every request carries a 30 s
+  timeout, and the process waits up to 30 s for `MAKEFUN_ENV_URL` to
+  appear instead of exiting silently. The search engine is unchanged
+  from v4d (same 100,000-node budget, same fitted Elo ~1,396). v4d was
+  rejected with practice grade 0 at the day's peak-load hour; a short
+  local regression trial confirms the loop survives that startup case.
 
 ## Local trials (kit gauntlet, same 8 book openings, fitted vs anchors)
 
@@ -35,6 +42,11 @@ trial replays move for move.
 | v3, 150k nodes | 9/3/4 | 10.5/16 | ~1,564 |
 | v4a, 150k nodes | 9/4/3 | 11.0/16 | ~1,598 |
 | v4d, 100k nodes | 8/0/8 | 8.0/16 | ~1,396 |
+| v4e, 100k nodes | 8/0/8 | 8.0/16 | ~1,396 |
+
+Trials 11–12 (v4e): prestart 2-game gauntlet 2/0/0, think max 3,342 ms; full
+16-game gauntlet 8/0/8, Elo ~1,396 (identical to v4d in every rung), think
+max 3,423 ms, 0 non-200 calls, zero time losses.
 
 Perft verified exact on the standard five positions; make/unmake and
 the incremental eval state round-trip exactly. The house baseline
