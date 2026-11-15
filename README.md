@@ -4,7 +4,7 @@
 [![rank](https://make.fun/badge/tiny-chess-01/dayuwidayadi57/tiny-chess-01-entry/rank.svg)](https://make.fun/bounty/tiny-chess-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=tiny-chess-01)
 [![reward](https://make.fun/badge/tiny-chess-01/dayuwidayadi57/tiny-chess-01-entry/reward.svg)](https://make.fun/bounty/tiny-chess-01?utm_source=github&utm_medium=readme&utm_campaign=tiny-chess-01)
 
-`main.py` (4,088 of the 4,096 allowed bytes) is the whole engine: an
+`main.py` (4,093 of the 4,096 allowed bytes) is the whole engine: an
 lzma-packed artifact that unpacks and execs a compact Python source
 (the rules explicitly allow a compressed payload plus its unpacker).
 No model calls, no clock reads, no randomness — every move is a pure
@@ -20,11 +20,9 @@ trial replays move for move.
 - Tapered evaluation: material + piece-square terms, bishop pair,
   passed-pawn bonuses by rank, knight/bishop mobility. Pawn-structure
   state is maintained incrementally with bit masks.
-- Fixed budget of 100,000 nodes per move. The budget was set from local
-  trial evidence, not by feel: the v3 engine at 150,000 nodes scored 0
-  on the server practice grade. At 100,000 nodes the same engine (plus
-  principal variation search) uses 70.6% of the wall locally, with the
-  slowest move 4.3 s and zero time losses.
+- Fixed budget of 150,000 nodes per move, restored in v5 from 100,000
+  after a measured ~12% speed gain (same search and eval, verified
+  behaviour-identical). Trial 13 used 88% of the 3,600 s wall locally.
 - Hardened agent loop (v4e): the env calls retry — `/game` is retried
   with a 3 s pause until the env answers, every request carries a 30 s
   timeout, and the process waits up to 30 s for `MAKEFUN_ENV_URL` to
@@ -39,10 +37,14 @@ trial replays move for move.
 | --- | --- | --- | --- |
 | v4d, 100k nodes | 8/0/8 | 8.0/16 | ~1,396 |
 | v4e, 100k nodes | 8/0/8 | 8.0/16 | ~1,396 |
+| v5, 150k nodes | 8/4/4 | 10.0/16 | ~1,530 |
 
-Trials 11–12 (v4e): prestart 2-game gauntlet 2/0/0, think max 3,342 ms; full
-16-game gauntlet 8/0/8, Elo ~1,396 (identical to v4d in every rung), think
-max 3,423 ms, 0 non-200 calls, zero time losses.
+Trials 11–12 (v4e): prestart 2/0/0; full gauntlet 8/0/8, Elo ~1,396,
+think max 3,423 ms, zero time losses.
+
+Trial 13 (v5): full 16-game gauntlet 8/4/4, Elo ~1,530, think mean 3,529 ms
+/ max 19,394 ms, 0 non-200 calls; two moves over the 10 s limit on a
+contended VM (10,674 / 19,394 ms).
 
 Perft verified exact on the standard five positions; make/unmake and
 the incremental eval state round-trip exactly.
