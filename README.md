@@ -1,50 +1,46 @@
-# tiny-chess-01 — a 4 KB Python chess engine
+# tiny-chess-01 — round 11 entry
 
 [![make.fun · tiny-chess-01](https://make.fun/badge/tiny-chess-01.svg)](https://make.fun/bounty/tiny-chess-01?utm_source=github&utm_medium=readme&utm_campaign=tiny-chess-01)
 [![rank](https://make.fun/badge/tiny-chess-01/dayuwidayadi57/tiny-chess-01-entry/rank.svg)](https://make.fun/bounty/tiny-chess-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=tiny-chess-01)
 [![reward](https://make.fun/badge/tiny-chess-01/dayuwidayadi57/tiny-chess-01-entry/reward.svg)](https://make.fun/bounty/tiny-chess-01?utm_source=github&utm_medium=readme&utm_campaign=tiny-chess-01)
 
-`main.py` (4,093 of the 4,096 allowed bytes) is the whole engine: an
-lzma-packed artifact that unpacks and execs a compact Python source
-(the rules explicitly allow a compressed payload plus its unpacker).
-No model calls, no clock reads, no randomness — every move is a pure
-function of the position, the game history and the trial seed, so a
-trial replays move for move.
+A chess engine in 3,833 bytes of Python (limit: 4,096), for the make.fun
+bounty "Build the strongest chess engine in 4 KB of Python" — see the
+[bounty page](https://make.fun/bounty/tiny-chess-01).
 
-## Design
+`main.py` is the kit's own packing of `source.py` (the readable engine,
+10,967 bytes): an LZMA stream plus the makefun-compress/v1 stub. Run it with
+`MAKEFUN_ENV_URL` set and it plays the house gauntlet through the env.
 
-- 0x88 board, negamax alpha-beta with quiescence (captures, promotions,
-  check replies), transposition table with ply-adjusted mate scores.
-- Move ordering: TT move, MVV-LVA captures, killers, PVS. Null-move
-  pruning, late-move reductions, checking moves extended.
-- Tapered evaluation: material + piece-square terms, bishop pair,
-  passed-pawn bonuses by rank, knight/bishop mobility. Pawn-structure
-  state is maintained incrementally with bit masks.
-- Fixed budget of 150,000 nodes per move, restored in v5 from 100,000
-  after a measured ~12% speed gain (same search and eval, verified
-  behaviour-identical). Trial 13 used 88% of the 3,600 s wall locally.
-- Hardened agent loop (v4e): the env calls retry — `/game` is retried
-  with a 3 s pause until the env answers, every request carries a 30 s
-  timeout, and the process waits up to 30 s for `MAKEFUN_ENV_URL` to
-  appear instead of exiting silently. The search engine is unchanged
-  from v4d (same 100,000-node budget, same fitted Elo ~1,396). v4d was
-  rejected with practice grade 0 at the day's peak-load hour; a short
-  local regression trial confirms the loop survives that startup case.
+Design (0x88 board, fixed 120,000-node budget per move, no clock):
 
-## Local trials (kit gauntlet, same 8 book openings, fitted vs anchors)
+- Negamax alpha-beta with principal variation search, null-move pruning
+  (R=3), late-move reductions and check extensions; quiescence over
+  captures, promotions and all replies to a check.
+- Transposition table with ply-adjusted mate scores; MVV-LVA move
+  ordering, two killer moves per ply and a history table; repetition
+  (game history + search path) and fifty-move draws score 0 inside the
+  search. The transposition table, killers and history are reset at the
+  start of every game, so each game is a pure function of its moves.
+- PeSTO tapered evaluation: the published middlegame/endgame
+  piece-square tables and material values (pawn 82, knight 337, bishop
+  365, rook 477, queen 1025), blended by game phase, plus a bishop-pair
+  bonus.
+- Iterative deepening at the root; root moves ordered by the previous
+  iteration, aborted iterations discarded; the search stops early once a
+  forced mate is found, so won games finish fast.
 
-| build | W/D/L | score | fitted Elo |
-| --- | --- | --- | --- |
-| v4d, 100k nodes | 8/0/8 | 8.0/16 | ~1,396 |
-| v4e, 100k nodes | 8/0/8 | 8.0/16 | ~1,396 |
-| v5, 150k nodes | 8/4/4 | 10.0/16 | ~1,530 |
+Run:
 
-Trials 11–12 (v4e): prestart 2/0/0; full gauntlet 8/0/8, Elo ~1,396,
-think max 3,423 ms, zero time losses.
+```
+MAKEFUN_ENV_URL=http://127.0.0.1:PORT python3 -P -s main.py
+```
 
-Trial 13 (v5): full 16-game gauntlet 8/4/4, Elo ~1,530, think mean 3,529 ms
-/ max 19,394 ms, 0 non-200 calls; two moves over the 10 s limit on a
-contended VM (10,674 / 19,394 ms).
+Verified: perft exact on the standard positions (start, position 3, 4, 5
+through depth 3–4; Kiwipete agrees exactly with the independent round 8
+implementation at 37/1657/62832); make/unmake roundtrip exact; the same
+position searched in two fresh processes gives the same move.
 
-Perft verified exact on the standard five positions; make/unmake and
-the incremental eval state round-trip exactly.
+Local practice trial-0 (fresh kit, 19 Nov 2026): 5 won, 1 drawn, 0 lost,
+Elo 1809, spare plies 364 — up from round 8's 3 won, 1 drawn, 2 lost,
+Elo 1364, spare plies 294.
