@@ -1,15 +1,15 @@
-# tiny-chess-01 — round 11 entry
+# tiny-chess-01 — round 14 entry
 
 [![make.fun · tiny-chess-01](https://make.fun/badge/tiny-chess-01.svg)](https://make.fun/bounty/tiny-chess-01?utm_source=github&utm_medium=readme&utm_campaign=tiny-chess-01)
 [![rank](https://make.fun/badge/tiny-chess-01/dayuwidayadi57/tiny-chess-01-entry/rank.svg)](https://make.fun/bounty/tiny-chess-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=tiny-chess-01)
 [![reward](https://make.fun/badge/tiny-chess-01/dayuwidayadi57/tiny-chess-01-entry/reward.svg)](https://make.fun/bounty/tiny-chess-01?utm_source=github&utm_medium=readme&utm_campaign=tiny-chess-01)
 
-A chess engine in 3,833 bytes of Python (limit: 4,096), for the make.fun
+A chess engine in 3,976 bytes of Python (limit: 4,096), for the make.fun
 bounty "Build the strongest chess engine in 4 KB of Python" — see the
 [bounty page](https://make.fun/bounty/tiny-chess-01).
 
 `main.py` is the kit's own packing of `source.py` (the readable engine,
-10,967 bytes): an LZMA stream plus the makefun-compress/v1 stub. Run it with
+11,161 bytes): an LZMA stream plus the makefun-compress/v1 stub. Run it with
 `MAKEFUN_ENV_URL` set and it plays the house gauntlet through the env.
 
 Design (0x88 board, fixed 120,000-node budget per move, no clock):
@@ -25,7 +25,11 @@ Design (0x88 board, fixed 120,000-node budget per move, no clock):
 - PeSTO tapered evaluation: the published middlegame/endgame
   piece-square tables and material values (pawn 82, knight 337, bishop
   365, rook 477, queen 1025), blended by game phase, plus a bishop-pair
-  bonus.
+  bonus, +8 tempo for the side to move, and a king pawn-shield term.
+- Mate-distance pruning in the search (`a = max(a, ply - MATE)`,
+  `b = min(b, MATE - ply)`), so won games convert fast instead of
+  drifting into repetition draws. Kept from round 11: the 120,000-node
+  budget, repetition scoring 0, and no opening book.
 - Iterative deepening at the root; root moves ordered by the previous
   iteration, aborted iterations discarded; the search stops early once a
   forced mate is found, so won games finish fast.
@@ -41,6 +45,8 @@ through depth 3–4; Kiwipete agrees exactly with the independent round 8
 implementation at 37/1657/62832); make/unmake roundtrip exact; the same
 position searched in two fresh processes gives the same move.
 
-Local practice trial-0 (fresh kit, 19 Nov 2026): 5 won, 1 drawn, 0 lost,
-Elo 1809, spare plies 364 — up from round 8's 3 won, 1 drawn, 2 lost,
-Elo 1364, spare plies 294.
+Local practice trial-0 (fresh kit, 20 Nov 2026): 6 won, 0 drawn, 0 lost,
+spare plies 663 — every game won by checkmate, up from round 11's 5 won,
+1 drawn, 0 lost, Elo 1810, spare plies 364. The same trial run side by
+side on round 11's engine reproduced its 5/1/0 and spare 364 exactly,
+so the trial measures the round-14 improvement, not noise.
